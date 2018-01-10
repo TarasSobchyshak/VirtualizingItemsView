@@ -14,49 +14,35 @@
                                   BorderBrush="{TemplateBinding BorderBrush}"
                                   BorderThickness="{TemplateBinding BorderThickness}"
                                   VerticalAlignment="{TemplateBinding VerticalAlignment}"
-                                  HorizontalAlignment="{TemplateBinding HorizontalAlignment}"
-                                  >
+                                  HorizontalAlignment="{TemplateBinding HorizontalAlignment}">
 
-                        <ItemsControl x:Name="control" 
+                        <ItemsControl x:Name="PartItemsControl" 
                                       ItemsSource="{TemplateBinding ItemsSource}"
-                                      DataContext="{Binding RelativeSource={RelativeSource Mode=TemplatedParent}}"
-                                      >
+                                      DataContext="{Binding RelativeSource={RelativeSource Mode=TemplatedParent}}">
 
                             <ItemsControl.ItemsPanel>
                                 <ItemsPanelTemplate>
-                                    <ItemsStackPanel/>
+                                    <ItemsStackPanel />
                                 </ItemsPanelTemplate>
                             </ItemsControl.ItemsPanel>
 
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
-                                    <Border Padding="5 2"
-                                            BorderThickness="1"
-                                            BorderBrush="Red"
-                                            Margin="2"
-                                            Background="LightCyan"
-                                            >
-                                        
-                                        <interactivity:Interaction.Behaviors>
-                                            <core:EventTriggerBehavior EventName="Tapped">
-                                                <core:InvokeCommandAction Command="{Binding DataContext.ItemTappedCommand, ElementName=control}"
-                                                                          CommandParameter="{Binding}"/>
-                                            </core:EventTriggerBehavior>
-                                        </interactivity:Interaction.Behaviors>
+                                    <Border x:Name="ItemWrapper"
+                                            Background="Transparent">
                                         
                                         <ContentControl Content="{Binding}"
                                                         VerticalContentAlignment="Stretch"
-                                                        HorizontalContentAlignment="Stretch"
-                                                        >
+                                                        HorizontalContentAlignment="Stretch">
 
                                             <interactivity:Interaction.Behaviors>
 
                                                 <core:DataTriggerBehavior Binding="{Binding IsSelected}" Value="False" ComparisonCondition="Equal">
-                                                    <core:ChangePropertyAction PropertyName="ContentTemplate" Value="{Binding DataContext.UnselectedItemTemplate, ElementName=control}"/>
+                                                    <core:ChangePropertyAction PropertyName="ContentTemplate" Value="{Binding DataContext.UnselectedItemTemplate, ElementName=PartItemsControl}"/>
                                                 </core:DataTriggerBehavior>
 
                                                 <core:DataTriggerBehavior Binding="{Binding IsSelected}" Value="True" ComparisonCondition="Equal">
-                                                    <core:ChangePropertyAction PropertyName="ContentTemplate" Value="{Binding DataContext.SelectedItemTemplate, ElementName=control}"/>
+                                                    <core:ChangePropertyAction PropertyName="ContentTemplate" Value="{Binding DataContext.SelectedItemTemplate, ElementName=PartItemsControl}"/>
                                                 </core:DataTriggerBehavior>
 
                                             </interactivity:Interaction.Behaviors>

@@ -1,25 +1,42 @@
 ﻿using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
-using System.Windows.Input;
 using Windows.ApplicationModel.Core;
 using Windows.System;
 using Windows.UI.Core;
 using Windows.UI.Xaml;
 using Windows.UI.Xaml.Controls;
+using Windows.UI.Xaml.Input;
 
 namespace Virtualization
 {
+    [TemplatePart(Name = PartItemsControl, Type = typeof(ItemsControl))]
     public sealed class VirtualizingItemsControl : ItemsControl
     {
+        #region Constants
+
+        private const string PartItemsControl = nameof(PartItemsControl);
+        private const string ItemWrapperName = "ItemWrapper";
+
+        #endregion
+
+        #region Private fields
+
+        private ISelectable oldValueKeeper = null;
+        private bool existSelectedItemCallback = false;
+        private int fixedSelectedItemIndex = -1;
+        private bool allItemsSelected = false;
+        private ItemsControl _partItemsControl;
+
+        #endregion
+
+
+
         #region Constructors
 
         public VirtualizingItemsControl()
         {
             DefaultStyleKey = typeof(VirtualizingItemsControl);
-
-            ItemTappedCommand = new RelayCommand<object>(ItemTapped);
 
             Unloaded += VirtualizingItemsControl_Unloaded;
             Loaded += VirtualizingItemsControl_Loaded;
@@ -30,10 +47,25 @@ namespace Virtualization
 
         #region Override
 
-        //protected override void OnApplyTemplate()
-        //{
-        //    base.OnApplyTemplate();
-        //}
+        protected override void OnApplyTemplate()
+        {
+            base.OnApplyTemplate();
+
+            if (GetTemplateChild(PartItemsControl) is ItemsControl itemsControl)
+            {
+                _partItemsControl = itemsControl;
+                _partItemsControl.Tapped += Item_Tapped;
+            }
+        }
+
+        private void Item_Tapped(object sender, TappedRoutedEventArgs e)
+        {
+            var border = UiExtensions.FindAscendant<Border>(e.OriginalSource as DependencyObject, ItemWrapperName);
+            if (border?.DataContext != null)
+            {
+                ItemTapped(border.DataContext);
+            }
+        }
 
         #endregion
 
@@ -53,6 +85,8 @@ namespace Virtualization
 
         private void VirtualizingItemsControl_Unloaded(object sender, RoutedEventArgs e)
         {
+            if (_partItemsControl != null) _partItemsControl.Tapped -= Item_Tapped;
+
             SelectionChanged -= VirtualizingItemsControl_SelectionChanged;
             Selected -= VirtualizingItemsControl_Selected;
             Unselected -= VirtualizingItemsControl_Unselected;
@@ -107,12 +141,6 @@ namespace Virtualization
             typeof(VirtualizingItemsControl),
             new PropertyMetadata(null, new PropertyChangedCallback(OnUnselectedItemTemplateChanged)));
 
-        public static readonly DependencyProperty ItemTappedCommandProperty = DependencyProperty.Register(
-            nameof(ItemTappedCommand),
-            typeof(ICommand),
-            typeof(VirtualizingItemsControl),
-            new PropertyMetadata(null));
-
 
         public IList<ISelectable> SelectedItems
         {
@@ -138,11 +166,6 @@ namespace Virtualization
             set { SetValue(UnselectedItemTemplateProperty, value); }
         }
 
-        public ICommand ItemTappedCommand
-        {
-            get { return (ICommand)GetValue(ItemTappedCommandProperty); }
-            set { SetValue(ItemTappedCommandProperty, value); }
-        }
 
         private void ItemTapped(object obj)
         {
@@ -161,10 +184,6 @@ namespace Virtualization
             }
         }
 
-        private ISelectable oldValueKeeper = null;
-        private bool existSelectedItemCallback = false;
-        private int fixedSelectedItemIndex = -1;
-
         private static void OnSelectedItemChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
         {
             if (d is VirtualizingItemsControl control)
@@ -178,17 +197,14 @@ namespace Virtualization
 
                 if ((shiftState & CoreVirtualKeyStates.Down) == CoreVirtualKeyStates.Down)
                 {
+                    // TODO: improve this to support data virtualizing ItemsSource
                     var items = ((IEnumerable<object>)control.ItemsSource).Cast<ISelectable>().ToList();
+
                     var newItemIndex = items.IndexOf(e.NewValue as ISelectable);
 
-                    if ((controlState & CoreVirtualKeyStates.Down) != CoreVirtualKeyStates.Down)
+                    if ((controlState & CoreVirtualKeyStates.Down) != CoreVirtualKeyStates.Down && control.fixedSelectedItemIndex >= 0)
                     {
                         ClearSelectedItems(control);
-
-                        //for (int i = 0; i < items.Count; ++i)
-                        //    items[i].IsSelected = false;
-
-                        //control.SelectedItems.Clear();
                     }
 
                     if (control.fixedSelectedItemIndex >= 0 && newItemIndex >= 0)
@@ -203,10 +219,6 @@ namespace Virtualization
                             }
                         }
                     }
-                    //else
-                    //{
-                    //    if (e.NewValue is ISelectable newItem) newItem.IsSelected = false;
-                    //}
                 }
                 else if ((controlState & CoreVirtualKeyStates.Down) == CoreVirtualKeyStates.Down)
                 {
@@ -284,10 +296,6 @@ namespace Virtualization
         }
 
         private static void OnUnselectedItemTemplateChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
-        {
-        }
-
-        private static void OnItemTappedCommandChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
         {
         }
 

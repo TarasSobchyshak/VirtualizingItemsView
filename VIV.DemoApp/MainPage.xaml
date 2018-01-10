@@ -11,7 +11,7 @@
     <Page.Resources>
 
         <DataTemplate x:Key="SelectedItemTemplate">
-            <StackPanel Orientation="Horizontal" Background="LightGreen" >
+            <StackPanel Orientation="Horizontal" Background="LightGreen" Padding="5 4" BorderThickness="0 1 0 0" BorderBrush="DarkGray">
                 <TextBlock Text="{Binding Subject}" Margin="10 0"/>
                 <TextBlock Text="{Binding Sender}" Margin="10 0"/>
                 <TextBlock Text="{Binding Body}" Margin="10 0"/>
@@ -20,7 +20,7 @@
         </DataTemplate>
 
         <DataTemplate x:Key="UnselectedItemTemplate">
-            <StackPanel Orientation="Horizontal">
+            <StackPanel Orientation="Horizontal" Background="#f2f2f2" Padding="5 4" BorderThickness="0 1 0 0" BorderBrush="DarkGray">
                 <TextBlock Text="{Binding Subject}" Margin="10 0"/>
                 <TextBlock Text="{Binding Sender}" Margin="10 0"/>
                 <TextBlock Text="{Binding Body}" Margin="10 0"/>
