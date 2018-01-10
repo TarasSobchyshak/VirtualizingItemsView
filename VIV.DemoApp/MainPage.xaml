@@ -28,11 +28,6 @@
             </StackPanel>
         </DataTemplate>
 
-        <virtualization:SelectionItemTemplateSelector x:Key="SelectionItemTemplateSelector"
-                                                      SelectedItemTemplate="{StaticResource SelectedItemTemplate}"
-                                                      UnselectedItemTemplate="{StaticResource UnselectedItemTemplate}"
-            />
-
     </Page.Resources>
 
     <Page.DataContext>
@@ -60,7 +55,8 @@
                 VerticalAlignment="Stretch" 
                 HorizontalAlignment="Stretch"
                 ItemsSource="{Binding Messages, Mode=TwoWay}"
-                ItemTemplateSelector="{StaticResource SelectionItemTemplateSelector}"
+                SelectedItemTemplate="{StaticResource SelectedItemTemplate}"
+                UnselectedItemTemplate="{StaticResource UnselectedItemTemplate}"
                 />
 
         </Grid>

@@ -19,7 +19,6 @@
 
                         <ItemsControl x:Name="control" 
                                       ItemsSource="{TemplateBinding ItemsSource}"
-                                      ItemTemplateSelector="{TemplateBinding ItemTemplateSelector}"
                                       DataContext="{Binding RelativeSource={RelativeSource Mode=TemplatedParent}}"
                                       >
 
@@ -31,31 +30,42 @@
 
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
-                                    <Border Padding="10"
+                                    <Border Padding="5 2"
                                             BorderThickness="1"
                                             BorderBrush="Red"
                                             Margin="2"
                                             Background="LightCyan"
                                             >
-
+                                        
                                         <interactivity:Interaction.Behaviors>
                                             <core:EventTriggerBehavior EventName="Tapped">
                                                 <core:InvokeCommandAction Command="{Binding DataContext.ItemTappedCommand, ElementName=control}"
                                                                           CommandParameter="{Binding}"/>
                                             </core:EventTriggerBehavior>
                                         </interactivity:Interaction.Behaviors>
-
-                                        <ContentControl HorizontalContentAlignment="Stretch"
+                                        
+                                        <ContentControl Content="{Binding}"
                                                         VerticalContentAlignment="Stretch"
-                                                        Content="{Binding}"
-                                                        ContentTemplateSelector="{Binding Path=(local:RelativeSourceBinding.Ancestor).ItemTemplateSelector, RelativeSource={RelativeSource Mode=Self}}" 
-                                                        local:RelativeSourceBinding.AncestorType="local:VirtualizingItemsControl"
-                                                        />
-                                    </Border>
+                                                        HorizontalContentAlignment="Stretch"
+                                                        >
 
+                                            <interactivity:Interaction.Behaviors>
+
+                                                <core:DataTriggerBehavior Binding="{Binding IsSelected}" Value="False" ComparisonCondition="Equal">
+                                                    <core:ChangePropertyAction PropertyName="ContentTemplate" Value="{Binding DataContext.UnselectedItemTemplate, ElementName=control}"/>
+                                                </core:DataTriggerBehavior>
+
+                                                <core:DataTriggerBehavior Binding="{Binding IsSelected}" Value="True" ComparisonCondition="Equal">
+                                                    <core:ChangePropertyAction PropertyName="ContentTemplate" Value="{Binding DataContext.SelectedItemTemplate, ElementName=control}"/>
+                                                </core:DataTriggerBehavior>
+
+                                            </interactivity:Interaction.Behaviors>
+
+                                        </ContentControl>
+                                    </Border>
                                 </DataTemplate>
                             </ItemsControl.ItemTemplate>
-                            
+
                         </ItemsControl>
 
                     </ScrollViewer>

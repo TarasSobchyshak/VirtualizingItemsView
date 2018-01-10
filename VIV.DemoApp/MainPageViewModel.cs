@@ -36,7 +36,7 @@ namespace VIV.DemoApp
                     Id = rand.Next(0, 1_000_000).ToString(),
                     Sender = "asdfdasfdasfsafds",
                     Subject = "gkasjdgksssdgadasdgssagsdgasgs",
-                    IsSelected = (i & 1) == 1
+                    IsSelected = false//(i & 1) == 1
                 });
             }
 

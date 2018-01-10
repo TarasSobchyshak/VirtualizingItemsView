@@ -3,6 +3,9 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Windows.Input;
+using Windows.ApplicationModel.Core;
+using Windows.System;
+using Windows.UI.Core;
 using Windows.UI.Xaml;
 using Windows.UI.Xaml.Controls;
 
@@ -68,12 +71,10 @@ namespace Virtualization
 
         private void VirtualizingItemsControl_Selected(object sender, SelectionChangedEventArgs e)
         {
-            //ItemTemplateSelector.SelectTemplate(e.AddedItems.FirstOrDefault());
         }
 
         private void VirtualizingItemsControl_Unselected(object sender, SelectionChangedEventArgs e)
         {
-            //ItemTemplateSelector.SelectTemplate(e.RemovedItems.FirstOrDefault());
         }
 
         #endregion
@@ -84,15 +85,15 @@ namespace Virtualization
 
         public static readonly DependencyProperty SelectedItemProperty = DependencyProperty.Register(
             nameof(SelectedItem),
-            typeof(object),
+            typeof(ISelectable),
             typeof(VirtualizingItemsControl),
             new PropertyMetadata(null, OnSelectedItemChanged));
 
         public static readonly DependencyProperty SelectedItemsProperty = DependencyProperty.Register(
             nameof(SelectedItems),
-            typeof(IList<object>),
+            typeof(IList<ISelectable>),
             typeof(VirtualizingItemsControl),
-            new PropertyMetadata(new List<object>(), OnSelectedItemsChanged));
+            new PropertyMetadata(new List<ISelectable>(), OnSelectedItemsChanged));
 
         public static readonly DependencyProperty SelectedItemTemplateProperty = DependencyProperty.Register(
             nameof(SelectedItemTemplate),
@@ -113,15 +114,15 @@ namespace Virtualization
             new PropertyMetadata(null));
 
 
-        public IList<object> SelectedItems
+        public IList<ISelectable> SelectedItems
         {
-            get { return (IList<object>)GetValue(SelectedItemsProperty); }
+            get { return (IList<ISelectable>)GetValue(SelectedItemsProperty); }
             set { SetValue(SelectedItemsProperty, value); }
         }
 
-        public object SelectedItem
+        public ISelectable SelectedItem
         {
-            get { return (object)GetValue(SelectedItemProperty); }
+            get { return (ISelectable)GetValue(SelectedItemProperty); }
             set { SetValue(SelectedItemProperty, value); }
         }
 
@@ -147,28 +148,125 @@ namespace Virtualization
         {
             if (obj is ISelectable selectable)
             {
-                selectable.IsSelected = !selectable.IsSelected;
+                //selectable.IsSelected = !selectable.IsSelected;
+
+
+                // temp VERY BAD solution to ensure property changed callback call every time
+                existSelectedItemCallback = true;
+                oldValueKeeper = SelectedItem;
+                SelectedItem = null;
+                existSelectedItemCallback = false;
+
                 SelectedItem = selectable;
             }
         }
+
+        private ISelectable oldValueKeeper = null;
+        private bool existSelectedItemCallback = false;
+        private int fixedSelectedItemIndex = -1;
 
         private static void OnSelectedItemChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
         {
             if (d is VirtualizingItemsControl control)
             {
-                if (e.OldValue is ISelectable oldValue) oldValue.IsSelected = false;
-                if (e.NewValue is ISelectable newValue) newValue.IsSelected = true;
+                if (control.existSelectedItemCallback) return;
 
-                var args = new SelectionChangedEventArgs(new List<object>() { e.OldValue }, new List<object>() { e.NewValue });
+                var coreWindow = CoreApplication.MainView.CoreWindow;
+                var shiftState = coreWindow.GetKeyState(VirtualKey.Shift);
+                var controlState = coreWindow.GetKeyState(VirtualKey.Control);
 
-                if (e.NewValue is ISelectable selectable)
+
+                if ((shiftState & CoreVirtualKeyStates.Down) == CoreVirtualKeyStates.Down)
                 {
-                    if (selectable.IsSelected) control.OnSelected(args);
-                    else control.OnUnselected(args);
-                }
+                    var items = ((IEnumerable<object>)control.ItemsSource).Cast<ISelectable>().ToList();
+                    var newItemIndex = items.IndexOf(e.NewValue as ISelectable);
 
-                control.OnSelectionChanged(args);
+                    if ((controlState & CoreVirtualKeyStates.Down) != CoreVirtualKeyStates.Down)
+                    {
+                        ClearSelectedItems(control);
+
+                        //for (int i = 0; i < items.Count; ++i)
+                        //    items[i].IsSelected = false;
+
+                        //control.SelectedItems.Clear();
+                    }
+
+                    if (control.fixedSelectedItemIndex >= 0 && newItemIndex >= 0)
+                    {
+                        for (int i = Math.Min(control.fixedSelectedItemIndex, newItemIndex); i <= Math.Max(control.fixedSelectedItemIndex, newItemIndex); ++i)
+                        {
+                            items[i].IsSelected = true;
+
+                            if (!control.SelectedItems.Contains(items[i]))
+                            {
+                                control.SelectedItems.Add(items[i]);
+                            }
+                        }
+                    }
+                    //else
+                    //{
+                    //    if (e.NewValue is ISelectable newItem) newItem.IsSelected = false;
+                    //}
+                }
+                else if ((controlState & CoreVirtualKeyStates.Down) == CoreVirtualKeyStates.Down)
+                {
+                    if (e.NewValue is ISelectable newItem)
+                    {
+                        SelectNewItem(control, control.oldValueKeeper, newItem, deselectOld: false);
+
+                        if (control.SelectedItems.Count == 0 && control.oldValueKeeper != null && control.oldValueKeeper.IsSelected)
+                        {
+                            if (control.oldValueKeeper.IsSelected) control.SelectedItems.Add(control.oldValueKeeper);
+                            else control.SelectedItems.Remove(control.SelectedItems.FirstOrDefault(x => x.Id == control.oldValueKeeper.Id));
+                        }
+
+                        if (newItem.IsSelected) control.SelectedItems.Add(newItem);
+                        else control.SelectedItems.Remove(control.SelectedItems.FirstOrDefault(x => x.Id == newItem.Id));
+
+                    }
+                }
+                else
+                {
+                    ClearSelectedItems(control);
+
+                    SelectNewItem(control, control.oldValueKeeper, e.NewValue as ISelectable, deselectOld: true);
+                }
             }
+        }
+
+        private static void ClearSelectedItems(VirtualizingItemsControl control)
+        {
+            if (control == null) return;
+
+            for (int i = 0; i < control.SelectedItems.Count; ++i)
+            {
+                if (control.SelectedItems[i] is ISelectable item)
+                {
+                    item.IsSelected = false;
+                }
+            }
+            control.SelectedItems.Clear();
+        }
+
+        private static void SelectNewItem(VirtualizingItemsControl control, ISelectable oldValue, ISelectable newValue, bool deselectOld)
+        {
+            if (oldValue != null && deselectOld && oldValue != newValue) oldValue.IsSelected = false;
+            if (newValue != null) newValue.IsSelected = !newValue.IsSelected;
+
+            var args = new SelectionChangedEventArgs(new List<object>() { oldValue }, new List<object>() { newValue });
+
+            if (newValue != null)
+            {
+                var items = ((IEnumerable<object>)control.ItemsSource).Cast<ISelectable>().ToList();
+
+                if (newValue.IsSelected) control.fixedSelectedItemIndex = items.IndexOf(newValue);
+                else control.fixedSelectedItemIndex = -1;
+
+                if (newValue.IsSelected) control.OnSelected(args);
+                else control.OnUnselected(args);
+            }
+
+            control.OnSelectionChanged(args);
         }
 
         private static void OnSelectedItemsChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
