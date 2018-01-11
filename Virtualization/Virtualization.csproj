@@ -107,6 +107,8 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="ISelectable.cs" />
+    <Compile Include="ISelectableCollection.cs" />
+    <Compile Include="IVirtualizing.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="UiExtensions.cs" />
     <Compile Include="VirtualizingItemsControl.cs" />

@@ -198,24 +198,38 @@ namespace Virtualization
                 if ((shiftState & CoreVirtualKeyStates.Down) == CoreVirtualKeyStates.Down)
                 {
                     // TODO: improve this to support data virtualizing ItemsSource
-                    var items = ((IEnumerable<object>)control.ItemsSource).Cast<ISelectable>().ToList();
 
-                    var newItemIndex = items.IndexOf(e.NewValue as ISelectable);
+                    //var items = ((IEnumerable<object>)control._partItemsControl.Items).Cast<ISelectable>().ToList();
+                    //var newItemIndex = items.Select(x => x.Id).ToList().IndexOf((e.NewValue as ISelectable)?.Id);
 
-                    if ((controlState & CoreVirtualKeyStates.Down) != CoreVirtualKeyStates.Down && control.fixedSelectedItemIndex >= 0)
+                    var newItemIndex = -1;
+                    if (e.NewValue is ISelectable newItem)
                     {
-                        ClearSelectedItems(control);
-                    }
-
-                    if (control.fixedSelectedItemIndex >= 0 && newItemIndex >= 0)
-                    {
-                        for (int i = Math.Min(control.fixedSelectedItemIndex, newItemIndex); i <= Math.Max(control.fixedSelectedItemIndex, newItemIndex); ++i)
+                        for (int i = 0; i < control._partItemsControl.Items.Count; ++i)
                         {
-                            items[i].IsSelected = true;
-
-                            if (!control.SelectedItems.Contains(items[i]))
+                            if (control._partItemsControl.Items[i] is ISelectable item && item.Id == newItem.Id)
                             {
-                                control.SelectedItems.Add(items[i]);
+                                //item.IsSelected = true;
+                                newItemIndex = i;
+                                break;
+                            }
+                        }
+
+                        if ((controlState & CoreVirtualKeyStates.Down) != CoreVirtualKeyStates.Down && control.fixedSelectedItemIndex >= 0)
+                        {
+                            ClearSelectedItems(control);
+                        }
+
+                        if (control.fixedSelectedItemIndex >= 0 && newItemIndex >= 0)
+                        {
+                            for (int i = Math.Min(control.fixedSelectedItemIndex, newItemIndex); i <= Math.Max(control.fixedSelectedItemIndex, newItemIndex); ++i)
+                            {
+                                if (control._partItemsControl.Items[i] is ISelectable item)
+                                {
+                                    item.IsSelected = true;
+
+                                    if (!control.SelectedItems.Contains(item)) control.AddSelectedItem(item);
+                                }
                             }
                         }
                     }
@@ -224,16 +238,16 @@ namespace Virtualization
                 {
                     if (e.NewValue is ISelectable newItem)
                     {
-                        SelectNewItem(control, control.oldValueKeeper, newItem, deselectOld: false);
+                        control.SelectNewItem(control.oldValueKeeper, newItem, deselectOld: false, addToSelectableCollection: false);
 
                         if (control.SelectedItems.Count == 0 && control.oldValueKeeper != null && control.oldValueKeeper.IsSelected)
                         {
-                            if (control.oldValueKeeper.IsSelected) control.SelectedItems.Add(control.oldValueKeeper);
-                            else control.SelectedItems.Remove(control.SelectedItems.FirstOrDefault(x => x.Id == control.oldValueKeeper.Id));
+                            if (control.oldValueKeeper.IsSelected) control.AddSelectedItem(control.oldValueKeeper);
+                            else control.RemoveSelectedItem(control.SelectedItems.FirstOrDefault(x => x.Id == control.oldValueKeeper.Id));
                         }
 
-                        if (newItem.IsSelected) control.SelectedItems.Add(newItem);
-                        else control.SelectedItems.Remove(control.SelectedItems.FirstOrDefault(x => x.Id == newItem.Id));
+                        if (newItem.IsSelected) control.AddSelectedItem(newItem);
+                        else control.RemoveSelectedItem(control.SelectedItems.FirstOrDefault(x => x.Id == newItem.Id));
 
                     }
                 }
@@ -241,8 +255,35 @@ namespace Virtualization
                 {
                     ClearSelectedItems(control);
 
-                    SelectNewItem(control, control.oldValueKeeper, e.NewValue as ISelectable, deselectOld: true);
+                    control.SelectNewItem(control.oldValueKeeper, e.NewValue as ISelectable, deselectOld: true, addToSelectableCollection: true);
                 }
+            }
+        }
+
+        private void AddSelectedItem(ISelectable item)
+        {
+            if (item == null) return;
+
+            if (SelectedItems?.Contains(item) != true)
+            {
+                SelectedItems.Add(item);
+            }
+
+            if (ItemsSource is ISelectableCollection collection && collection.SelectedItemsIds?.Contains(item.Id) != true)
+            {
+                collection.SelectedItemsIds.Add(item.Id);
+            }
+        }
+
+        private void RemoveSelectedItem(ISelectable item)
+        {
+            if (item == null) return;
+
+            SelectedItems?.Remove(item);
+
+            if (ItemsSource is ISelectableCollection collection)
+            {
+                collection.SelectedItemsIds?.Remove(item.Id);
             }
         }
 
@@ -257,10 +298,16 @@ namespace Virtualization
                     item.IsSelected = false;
                 }
             }
+
+            if (control.ItemsSource is ISelectableCollection collection)
+            {
+                collection.SelectedItemsIds.Clear();
+            }
+
             control.SelectedItems.Clear();
         }
 
-        private static void SelectNewItem(VirtualizingItemsControl control, ISelectable oldValue, ISelectable newValue, bool deselectOld)
+        private void SelectNewItem(ISelectable oldValue, ISelectable newValue, bool deselectOld, bool addToSelectableCollection)
         {
             if (oldValue != null && deselectOld && oldValue != newValue) oldValue.IsSelected = false;
             if (newValue != null) newValue.IsSelected = !newValue.IsSelected;
@@ -269,16 +316,22 @@ namespace Virtualization
 
             if (newValue != null)
             {
-                var items = ((IEnumerable<object>)control.ItemsSource).Cast<ISelectable>().ToList();
+                fixedSelectedItemIndex = newValue.IsSelected && newValue is IVirtualizing virtualizing ? virtualizing.Index : -1;
 
-                if (newValue.IsSelected) control.fixedSelectedItemIndex = items.IndexOf(newValue);
-                else control.fixedSelectedItemIndex = -1;
+                if (newValue.IsSelected)
+                {
+                    OnSelected(args);
 
-                if (newValue.IsSelected) control.OnSelected(args);
-                else control.OnUnselected(args);
+                    if (addToSelectableCollection && ItemsSource is ISelectableCollection collection && collection.SelectedItemsIds?.Contains(newValue.Id) != true)
+                    {
+                        collection.SelectedItemsIds.Add(newValue.Id);
+                    }
+                }
+
+                else OnUnselected(args);
             }
 
-            control.OnSelectionChanged(args);
+            OnSelectionChanged(args);
         }
 
         private static void OnSelectedItemsChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)

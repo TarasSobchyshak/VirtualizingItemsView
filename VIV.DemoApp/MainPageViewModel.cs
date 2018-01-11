@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Threading.Tasks;
 using System.Windows.Input;
 using VIV.DemoApp.MVVM;
 
@@ -10,36 +11,29 @@ namespace VIV.DemoApp
     {
         public MainPageViewModel()
         {
-            Messages = new ObservableCollection<Message>();
         }
 
-        public ObservableCollection<Message> Messages
+        public VirtualizingCollection<Message> Messages
         {
-            get => GetProperty<ObservableCollection<Message>>();
+            get => GetProperty<VirtualizingCollection<Message>>();
             set => SetProperty(value);
         }
 
-        public ICommand LoadMessagesCommand => new RelayCommand(LoadMessages);
+        public ICommand LoadMessagesCommand => new RelayCommand(async () => await LoadMessages());
 
-        private void LoadMessages()
+        private async Task LoadMessages()
         {
-            var count = 1000;
-            var items = new List<Message>(count);
-            var rand = new Random();
+            var provider = new MessagesProvider();
 
-            for (int i = 0; i < count; ++i)
-            {
-                items.Add(new Message
-                {
-                    Body = "asfasdf",
-                    Id = rand.Next(0, 1_000_000).ToString(),
-                    Sender = "asdfdasfdasfsafds",
-                    Subject = "gkasjdgksssdgadasdgssagsdgasgs",
-                    IsSelected = false//(i & 1) == 1
-                });
-            }
+            var count = await provider.FetchCountAsync();
 
-            Messages = new ObservableCollection<Message>(items);
+            var virtualizedCollection = new VirtualizingCollection<Message>(
+                pageSize: 100,
+                itemsProvider: provider,
+                count: count
+                );
+
+            Messages = virtualizedCollection;
         }
     }
 }
