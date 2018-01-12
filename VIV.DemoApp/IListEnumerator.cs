@@ -23,7 +23,6 @@ namespace VIV.DemoApp
 
         public bool MoveNext()
         {
-
             IList localList = list;
 
             if ( ((uint)index < (uint)localList.Count))
@@ -54,7 +53,7 @@ namespace VIV.DemoApp
         {
             get
             {
-                if (index == 0 || index == list.Count + 1)
+                if (index <= 0 || index >= list.Count + 1)
                 {
                     throw new InvalidOperationException("ExceptionResource.InvalidOperation_EnumOpCantHappen");
                     //ThrowHelper.ThrowInvalidOperationException(ExceptionResource.InvalidOperation_EnumOpCantHappen);
