@@ -320,7 +320,7 @@ namespace Virtualization
 
                 for (int i = 0; i < removed.Length; ++i)
                 {
-                    if (removed[i] is ISelectable item) item.IsSelected = false;
+                    if (removed[i] is ISelectable item && item.Id != oldValue.Id) item.IsSelected = false;
                 }
 
                 _removedItemsArgs.AddRange(removed);
